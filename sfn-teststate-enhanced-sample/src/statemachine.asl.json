@@ -1,0 +1,81 @@
+{
+  "Comment": "Demo state machine for TestState API enhancements",
+  "StartAt": "DetermineShipping",
+  "States": {
+    "DetermineShipping": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.total",
+          "NumericGreaterThanEquals": 100,
+          "Next": "UseExpress"
+        }
+      ],
+      "Default": "UseEconomy"
+    },
+    "UseExpress": {
+      "Type": "Pass",
+      "Result": {
+        "shipping": "EXPRESS"
+      },
+      "Next": "PackItems"
+    },
+    "UseEconomy": {
+      "Type": "Pass",
+      "Result": {
+        "shipping": "ECONOMY"
+      },
+      "Next": "PackItems"
+    },
+    "PackItems": {
+      "Type": "Map",
+      "ItemsPath": "$.items",
+      "MaxConcurrency": 2,
+      "ResultPath": "$.packedItems",
+      "Iterator": {
+        "StartAt": "PackSingleItem",
+        "States": {
+          "PackSingleItem": {
+            "Type": "Pass",
+            "ResultPath": "$.status",
+            "Result": "PACKED",
+            "End": true
+          }
+        }
+      },
+      "Next": "RunParallelChecks"
+    },
+    "RunParallelChecks": {
+      "Type": "Parallel",
+      "Branches": [
+        {
+          "StartAt": "InventoryCheck",
+          "States": {
+            "InventoryCheck": {
+              "Type": "Pass",
+              "Result": "AVAILABLE",
+              "End": true
+            }
+          }
+        },
+        {
+          "StartAt": "FraudCheck",
+          "States": {
+            "FraudCheck": {
+              "Type": "Pass",
+              "Result": "CLEAR",
+              "End": true
+            }
+          }
+        }
+      ],
+      "ResultPath": "$.parallelResults",
+      "Next": "Complete"
+    },
+    "Complete": {
+      "Type": "Pass",
+      "Result": "ORDER_READY",
+      "End": true
+    }
+  }
+}
